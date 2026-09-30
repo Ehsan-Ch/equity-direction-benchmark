@@ -1,0 +1,11 @@
+{
+  "source_url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip",
+  "source_page": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html",
+  "archive_sha256": "2f29e22546069914890a712680a6f81f3680ebc3543b52864484d209ca13a7db",
+  "source_header": "This file was created by using the 202608 CRSP database.\nThe Tbill return is the simple daily rate that, over the number of trading days\ncompounds to 1-month TBill rate. The 1-month TBill rate data until 202405 are from Ibbotson Associates. Starting from 202406, the 1-month TBill rate is from ICE BofA US 1-Month Treasury Bill Index.",
+  "source_rows": 26317,
+  "source_start": "1926-07-01",
+  "source_end": "2026-08-31",
+  "units": "decimal returns",
+  "availability": "Revised research data, not point-in-time publication timestamps"
+}

@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+data/raw/*
+!data/raw/.gitkeep
+artifacts/
+reports/figures/*.png
+.DS_Store
+tmp*/
+pip-*/
