@@ -1,39 +1,63 @@
 # Equity Direction Benchmark
 
-A runnable financial machine-learning research project on **real US equity-market data**. It asks whether lagged market, size and value factors improve the probability forecast of a positive next-observation market excess return.
+**Machine learning research on real financial time series — from data preparation to reproducible model evaluation.**
 
-The focus is the research workflow: validated data ingestion, chronological experiments, probability calibration, honest baselines and auditable results. The project was created with **OpenAI Codex assistance for Ehsan Cheraghi** in September 2026. It is a portfolio research implementation, separate from prior freelance employment and unaffiliated with Alipes or the data provider.
+Can past market, size and value signals improve the forecast that the next observed US market excess return will be positive? This Python project tests that question with feature engineering, model comparison, probability calibration and evaluation on later years.
 
-## Result first
+**31 features · 6 annual forward tests · 1,508 test observations · No GPU or API key required**
 
-The experiment ran on **1,508 observations across six annual forward tests, 2020-2025**. The validation-selected workflow did **not establish a reliable improvement** over the simple historical-prior baseline.
+[Results](reports/RESULTS.md) · [Research skills](#research-skills-demonstrated) · [Run the project](#run-the-project) · [Interview walkthrough](docs/INTERVIEW_GUIDE.md)
+
+**Main finding:** the selected workflow slightly reduced probability error, but the uncertainty interval includes no improvement over the historical baseline. The value of the project is a transparent, reproducible experiment with inspectable decisions and results.
+
+![Brier-score comparison of the baselines, raw and calibrated models, and validation-selected workflow; lower is better](reports/figures/benchmark.svg)
+
+## Results at a glance
+
+The evaluation covers **2020–2025**, testing each year using models fitted on earlier years. Brier score measures the mean squared error of predicted probabilities; lower is better. The historical-prior baseline forecasts the proportion of positive outcomes in earlier eligible data.
 
 | Forecast | Brier score ↓ | Log loss ↓ | Direction accuracy |
 | --- | ---: | ---: | ---: |
 | Historical prior | 0.248563 | 0.690271 | 53.91% |
 | Validation-selected workflow | 0.248145 | 0.689421 | 53.51% |
 
-The paired 95% block-bootstrap interval for the Brier difference is **[-0.001607, +0.000754]**, which includes zero. These are executed results, not mock scores. All candidate families, including worse-performing ones, remain in the [full report](reports/RESULTS.md).
+The selected workflow can choose the historical prior, logistic regression or gradient boosting using the tuning year. It is not the best model chosen after inspecting test scores. Its paired 95% block-bootstrap interval for the Brier difference is **[-0.001607, +0.000754]**, so the experiment **does not establish a reliable improvement**. Accuracy alone is misleading because positive outcomes are more common.
 
-![Executed probability benchmark](reports/figures/benchmark.svg)
+See the [full results](reports/RESULTS.md) for every candidate, annual results, calibration plots and uncertainty assumptions. All scores come from the executed code.
 
-**Scope:** historical research on revised daily factor data. This is neither high-frequency data nor a live trading system. Lagged features prevent computational look-ahead in the downloaded vintage, but the provider's publication delays and historical revisions prevent a claim of point-in-time tradability.
+## Research skills demonstrated
 
-## What is implemented
+The repository makes core tasks in a machine learning research role easy to inspect:
 
-| Research task | Implementation |
-| --- | --- |
-| Data preparation | Official ZIP download, schema/unit validation, missing-value rejection and SHA-256 provenance |
-| Time-series features | 31 lagged return, rolling mean/volatility and risk-free-rate features |
-| Candidate models | Standardized logistic regression and histogram gradient boosting with small fixed grids |
-| Benchmarking | Historical-prior and 50% baselines; annual train/tune/calibrate/test windows with gaps |
-| Calibration | Separate recent-year sigmoid fit; both raw and transformed probabilities retained |
-| Evaluation | Brier, log loss, ROC AUC, balanced accuracy, reliability bins and paired block uncertainty |
-| Monitoring prototype | Trailing probability loss and reference-binned feature PSI, evaluated retrospectively |
-| Reproducibility | Pinned core dependencies, complete prediction CSV, stage audit, source hash and local model artifact |
-| Verification | Offline integrity and end-to-end tests, committed-result audit, GitHub Actions workflow |
+| Skill | Evidence in this project | Inspect |
+| --- | --- | --- |
+| Data preparation | Validate schemas, units, dates and missing values; record the source archive hash | [Data ingestion](src/equity_benchmark/data.py) |
+| Feature engineering | Create 31 lagged returns, rolling means, volatility and risk-free-rate features | [Feature code](src/equity_benchmark/features.py) |
+| Experiment design | Separate training, tuning, calibration and testing in time, with gaps between stages | [Split logic](src/equity_benchmark/splits.py) · [Protocol](docs/PROTOCOL.md) |
+| Model development | Compare standardized logistic regression and histogram gradient boosting with simple baselines; retain raw and calibrated forecasts | [Models](src/equity_benchmark/models.py) · [Experiment](src/equity_benchmark/experiment.py) |
+| Critical evaluation | Report Brier score, log loss, ROC AUC, balanced accuracy and uncertainty, including weaker results | [Metrics](src/equity_benchmark/metrics.py) · [Report](reports/RESULTS.md) |
+| Reproducible engineering | Pin core dependencies, export predictions and stage audits, test integrity and replay saved models | [Tests](tests) · [CLI](src/equity_benchmark/cli.py) |
 
-## Run it
+**Stack:** Python, pandas, NumPy, scikit-learn, Matplotlib, joblib and unittest. A GitHub Actions [test workflow](.github/workflows/tests.yml) is included.
+
+## How the experiment works
+
+For each test year **Y**, training starts in 1990 and ends in **Y−3**, tuning uses **Y−2**, calibration uses **Y−1**, and evaluation uses **Y**. Five observations are removed from the end of each pre-test stage. Features use only earlier observations within the downloaded data vintage.
+
+```mermaid
+flowchart TD
+    A[Validate data and build lagged features] --> B[Train candidates and compare on tuning year]
+    B --> C{Selected family}
+    C -->|Historical prior| D[Estimate rate from eligible past labels]
+    C -->|ML model| E[Refit on train and tune]
+    E --> F[Calibrate on a separate year]
+    D --> G[Score next year and export evidence]
+    F --> G
+```
+
+Selection uses tuning Brier score. A selected ML model always receives sigmoid calibration; test results do not decide whether to apply it. The [protocol](docs/PROTOCOL.md) documents the grids, split boundaries and assumptions.
+
+## Run the project
 
 Python **3.11 or later**; Python 3.12 was used for the published run. A fresh virtual environment is recommended. From the repository root:
 
@@ -44,9 +68,14 @@ python -m equity_benchmark.cli run
 python -m unittest discover -s tests -v
 ```
 
-The commands also work in PowerShell with a Python environment activated. No API key, paid service or GPU is required. The initial download requires internet access; the cached experiment and tests can run offline. Do not install packages into a system-managed Python environment.
+The commands also work in PowerShell with a Python environment activated. The initial download requires internet access; the cached experiment and tests can run offline.
 
-`run` writes `reports/metrics.json`, `predictions.csv`, `RESULTS.md` and three figures. A local `artifacts/final_fold.joblib` stores the final year's models and calibration objects. Raw data and model binaries are excluded from git. To keep the committed results unchanged during a new run:
+`run` writes exact scores, predictions, an evaluation report and three figures to `reports/`. It also saves the final year's models and calibration objects locally. Raw data and model binaries are excluded from git.
+
+<details>
+<summary>Reproduce the data vintage, preserve existing results and replay a forecast</summary>
+
+To keep the committed results unchanged during a new run:
 
 ```bash
 python -m equity_benchmark.cli run --output artifacts/my_run/reports --artifacts artifacts/my_run/models
@@ -68,19 +97,7 @@ python -m equity_benchmark.cli replay --date 2025-06-30
 
 The output records the target date, last feature observation, last fitting label and probability. It refuses dates before the final model's test window and mismatched source vintages. This is a replay, not a live forecast. `joblib` artifacts use pickle; load only artifacts you generated and trust.
 
-## Evaluation design
-
-For test year Y, training expands from 1990 through Y-3; tuning uses Y-2; calibration uses Y-1; test uses Y. Five observations are excluded at the end of each pre-test stage. Feature values at t use t-1 or earlier. Candidate selection uses tuning Brier score; base estimators are then refitted on train plus tune, and calibration uses a disjoint year. Test scores never determine the chosen family.
-
-The fixed rule calibrates a selected ML family. It does not choose calibration based on test performance. The historical-prior forecast uses all eligible known labels. A simpler model is allowed to win. See [the full protocol](docs/PROTOCOL.md) for exact grids, units and assumptions.
-
-```mermaid
-flowchart TD
-    A[Provider archive and hash] --> B[Validated lagged features]
-    B --> C[Train and tune on earlier years]
-    C --> D[Refit then calibrate on a separate year]
-    D --> E[Score the next year and export evidence]
-```
+</details>
 
 ## Navigate the evidence
 
@@ -91,13 +108,17 @@ flowchart TD
 - [Data definitions and availability limitations](docs/DATA.md)
 - [Interview walkthrough and next experiments](docs/INTERVIEW_GUIDE.md)
 
-## Limitations that matter
+## Scope and limitations
 
-The current archive is not point-in-time data. The target is a research portfolio's excess-return direction, not an executable asset. The small calibration year can add variance, and an expanding training window can lag structural change. Pooled AUC can reflect differences between annual forecasts, so annual metrics are also supplied. The bootstrap conditions on fitted models and cannot prove an edge. No execution, costs, slippage, risk sizing, live service or production deployment has been tested.
+- **Historical research:** the provider revises daily factors and does not supply historical publication timestamps. Lagging features prevents computational look-ahead within this vintage, but cannot establish that the data were available at the time.
+- **Limited evidence of prediction:** the interval includes zero improvement; calibration can add variance, and changing market conditions can weaken models. Annual metrics are supplied because pooled AUC can reflect differences between yearly forecasts.
+- **No trading or deployment claim:** the target is a research portfolio's excess-return direction. Execution, costs, slippage, risk sizing and live production performance have not been tested. Rolling loss and feature-distribution diagnostics are retrospective monitoring prototypes.
 
-The implementation covers data preparation, model calibration, benchmarking and time-series workflow design relevant to quantitative ML research. It does not claim high-frequency infrastructure, out-of-core scale or novel neural architectures.
+See [data limitations](docs/DATA.md) and the [research protocol](docs/PROTOCOL.md) for details. Possible extensions are documented in the [interview guide](docs/INTERVIEW_GUIDE.md).
 
-## Sources and license
+## Project background, sources and license
+
+Created with **OpenAI Codex assistance for Ehsan Cheraghi** in September 2026. This is a portfolio research implementation, separate from prior freelance employment and unaffiliated with Alipes or the data provider.
 
 Data: [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html) and [factor definitions](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_factors.html). Probability-calibration background: [scikit-learn documentation](https://scikit-learn.org/stable/modules/calibration.html).
 
