@@ -95,4 +95,4 @@ def write_report(report: dict, predictions: pd.DataFrame, output: Path) -> None:
               f"Source archive SHA-256: `{report['data']['archive_sha256']}`.",
               "", "The provider revises historical factors and does not provide point-in-time daily publication timestamps in this archive. The split prevents computational look-ahead within this downloaded vintage, but not vintage/revision or publication-delay bias. Daily factors are research portfolio returns, not an executable instrument. No P&L, fills, transaction costs, live monitoring or production trading performance are claimed.",
               "", "Files: [metrics.json](metrics.json), [predictions.csv](predictions.csv), [data_manifest.json](data_manifest.json).", ""]
-    (output/"RESULTS.md").write_text("\n".join(lines))
+    (output/"RESULTS.md").write_text("\n".join(lines), encoding="utf-8")

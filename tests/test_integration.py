@@ -5,6 +5,7 @@ import io
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,14 @@ class PipelineTests(unittest.TestCase):
         data.index.name = ""
         cls.path = cls.root/"fixture.zip"
         cls.path.write_bytes(archive(data.to_csv()))
-        with contextlib.redirect_stdout(io.StringIO()):
+        # Exercise a Windows-style legacy default even when CI runs on Linux.
+        original_open = Path.open
+        def legacy_report_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
+            if path.name == "RESULTS.md" and "b" not in mode and encoding is None:
+                encoding = "cp1252"
+            return original_open(path, mode, buffering, encoding, errors, newline)
+
+        with contextlib.redirect_stdout(io.StringIO()), patch.object(Path, "open", legacy_report_open):
             cls.result = run(cls.path, cls.root/"reports", cls.root/"artifacts",
                              Config(start="2015-01-01", end="2020-12-31", first_test_year=2020,
                                     last_test_year=2020, bootstrap_repeats=50))
@@ -51,6 +59,7 @@ class PipelineTests(unittest.TestCase):
                      "figures/benchmark.svg", "figures/calibration.svg", "figures/rolling_loss.svg"]:
             self.assertTrue((self.root/"reports"/file).is_file())
         self.assertEqual(len(self.result["features"]), 31)
+        self.assertIn("Brier \u2193", (self.root/"reports/RESULTS.md").read_text(encoding="utf-8"))
 
 
 class PublishedResultAudit(unittest.TestCase):
